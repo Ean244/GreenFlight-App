@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">Drone Controller</string>
+    <string name="connect">Connect</string>
+    <string name="throttle">Throttle</string>
+    <string name="no_perms">App not granted sufficient permissions!</string>
+    <string name="throttle_control">Throttle Controller</string>
+    <string name="conn_success">Successfully Connected!</string>
+    <string name="conn_data_corrupted">Data received from drone is corrupted!</string>
+    <string name="conn_no_response">No response from drone! Please retry!</string>
+    <string name="conn_packet_send_fail">Failed to send connection packet! Please retry!</string>
+    <string name="wifi_fail_conn">Failed to connect to GreenFlight wifi</string>
+    <string name="channel_display_info">Throttle: %d Yaw: %d Pitch: %d Roll: %d</string>
+    <string name="voltage_display_info">Voltage: %.2f</string>
+    <string name="arm">Arm</string>
+    <string name="disarm">Disarm</string>
+    <string name="arm_fail">Failed to arm drone - No response from drone</string>
+    <string name="arm_success">Drone armed!</string>
+    <string name="disarm_fail">Failed to disarm drone - No response from drone</string>
+    <string name="disarm_success">Drone disarmed!</string>
+</resources>

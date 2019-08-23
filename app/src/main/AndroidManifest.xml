@@ -2,10 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.genean.dronecontroller">
 
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -26,10 +22,15 @@
 
         <activity
             android:name=".ControllerActivity"
-            android:screenOrientation="sensorLandscape" />
-
+        android:screenOrientation="sensorLandscape" />
         <activity
-            android:name=".ThrottleActivity"
+            android:name=".SettingsActivity"
             android:screenOrientation="sensorPortrait" />
+
     </application>
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
 </manifest>

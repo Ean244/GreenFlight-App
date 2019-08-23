@@ -13,12 +13,20 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
-import java.util.Arrays;
+import com.genean.dronecontroller.packet.Packet;
+import com.genean.dronecontroller.packet.PacketHandler;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class ConnectActivity extends AppCompatActivity {
     private static final String TAG = "ConnectActivity";
     private static final String SSID = String.format("\"%s\"", "GreenFlight");
     private static final String PSK = String.format("\"%s\"", "loremipsum");
+    private final ExecutorService connectExecutor = Executors.newSingleThreadExecutor();
+    private Future<?> connectTask = CompletableFuture.completedFuture(null);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,22 +35,26 @@ public class ConnectActivity extends AppCompatActivity {
 
         final Button connect = findViewById(R.id.connectButton);
         connect.setOnClickListener(this::onClickConnect);
+    }
 
-        final Button throttle = findViewById(R.id.throttleButton);
-        throttle.setOnClickListener(this::onClickThrottle);
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        connectTask.cancel(true);
     }
 
     private void onClickConnect(View view) {
+        if(!connectTask.isDone())
+            return;
+
         if (!checkPermissions())
             return;
 
         if (!connectHostAp())
             return;
 
-        startConnection();
-
-        Intent intent = new Intent(this, ControllerActivity.class);
-        this.startActivity(intent);
+        connectTask = connectExecutor.submit(this::startConnection);
     }
 
     private boolean checkPermissions() {
@@ -95,36 +107,40 @@ public class ConnectActivity extends AppCompatActivity {
     }
 
     private void startConnection() {
-        Thread thread = new Thread(() -> {
-            if (!PacketHandler.INSTANCE.sendPacket(FlightCommands.CLIENT_CONNECT.getCommand().getBytes())) {
-                toast(R.string.conn_packet_send_fail);
-            }
-
-            byte[] ack = new byte[FlightCommands.HOST_ACK.getCommand().getBytes().length];
-
-            if (!PacketHandler.INSTANCE.receivePacket(ack)) {
-                toast(R.string.conn_no_response);
-                return;
-            }
-
-            if (Arrays.equals(ack, FlightCommands.HOST_ACK.getCommand().getBytes())) {
-                toast(R.string.conn_success);
-                Intent intent = new Intent(this, ControllerActivity.class);
-                this.startActivity(intent);
+        Packet packet = new Packet(FlightCommand.CLIENT_CONNECT_QUERY);
+        packet.setOnCompleted(response -> {
+            if(response == Packet.Response.SUCCESS) {
+                waitForConnectResponse();
             } else {
-                Log.w(TAG, "Corrupted ack received!");
-                toast(R.string.conn_data_corrupted);
+                toast(R.string.packet_send_fail);
             }
         });
 
-        thread.start();
+        PacketHandler.INSTANCE.sendPacketToHost(packet);
+    }
+
+    private void waitForConnectResponse() {
+        Packet packet = new Packet(FlightCommand.HOST_CONNECT_RESPONSE);
+
+        packet.setOnCompleted(response -> {
+            if(response == Packet.Response.SUCCESS) {
+                toast(R.string.connect_success);
+
+                Intent intent = new Intent(this, ControllerActivity.class);
+                this.startActivity(intent);
+            } else if (response == Packet.Response.TIMEOUT) {
+                toast(R.string.packet_response_timeout);
+            } else if (response == Packet.Response.IO_ERROR) {
+                toast(R.string.packet_response_fail);
+            } else if (response == Packet.Response.CORRUPTED_DATA) {
+                toast(R.string.packet_response_corrupted);
+            }
+        });
+
+        PacketHandler.INSTANCE.receiveHostPacketResponse(packet, true);
     }
 
     private void toast(int id) {
         runOnUiThread(() -> Toast.makeText(getApplicationContext(), getString(id), Toast.LENGTH_LONG).show());
-    }
-
-    private void onClickThrottle(View view) {
-
     }
 }

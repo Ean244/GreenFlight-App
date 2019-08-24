@@ -10,10 +10,9 @@ public enum FlightCommand {
     CLIENT_CHANNEL_UPDATE("T%dY%dP%dR%d#"),
     CLIENT_VOLTAGE_QUERY("V#"),
     HOST_VOLTAGE_RESPONSE("V0000"),
-    CLIENT_PID_UPDATE("!%cP%.3fI%.3fD%.3f"),
+    CLIENT_PID_UPDATE("!%cP%7.3fI%7.3fD%7.3f#"),
     HOST_PID_UPDATE_RESPONSE("OK"),
-    CLIENT_PID_QUERY("?%c#"),
-    HOST_PID_RESPONSE("P0.000I0.000D0.000");
+    CLIENT_PID_QUERY("?%c#");
     private String command;
 
     FlightCommand(String command) {

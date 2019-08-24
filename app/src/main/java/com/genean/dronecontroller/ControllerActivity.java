@@ -39,7 +39,7 @@ public class ControllerActivity extends AppCompatActivity {
     private TextView voltageDisplayText;
     private Button armButton;
 
-    private boolean isArmed;
+    private boolean armed;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -106,7 +106,7 @@ public class ControllerActivity extends AppCompatActivity {
         if (!armTask.isDone())
             return;
 
-        if (!isArmed) {
+        if (!armed) {
             if (throttleChannel > 1100) {
                 toast(R.string.throttle_not_low);
                 return;
@@ -155,8 +155,8 @@ public class ControllerActivity extends AppCompatActivity {
                 toast(R.string.packet_response_corrupted);
             } else if (response == Packet.Response.SUCCESS) {
                 toast(R.string.arm_success);
-                armButton.setText(R.string.disarm);
-                isArmed = true;
+                armed = true;
+                runOnUiThread(() -> armButton.setText(R.string.disarm));
             }
         });
 
@@ -174,8 +174,8 @@ public class ControllerActivity extends AppCompatActivity {
                 toast(R.string.packet_response_corrupted);
             } else if (response == Packet.Response.SUCCESS) {
                 toast(R.string.disarm_success);
-                armButton.setText(R.string.arm);
-                isArmed = false;
+                armed = false;
+                runOnUiThread(() -> armButton.setText(R.string.arm));
             }
         });
 
@@ -216,7 +216,7 @@ public class ControllerActivity extends AppCompatActivity {
     }
 
     private void onSettingsClicked(View view) {
-        if(isArmed) {
+        if(armed) {
             toast(R.string.settings_drone_not_disarmed);
             return;
         }

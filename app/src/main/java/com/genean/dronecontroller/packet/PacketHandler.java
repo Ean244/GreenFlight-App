@@ -1,5 +1,6 @@
 package com.genean.dronecontroller.packet;
 
+import android.support.annotation.WorkerThread;
 import android.util.Log;
 
 import java.io.IOException;
@@ -10,8 +11,6 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.Arrays;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 //Note: Drone is the Host
 
@@ -22,8 +21,6 @@ public class PacketHandler {
     private static final String HOST_IP = "192.168.4.1";
     private static final int HOST_PORT = 333;
     private static final int RESPONSE_TIMEOUT_MILLS = 1500;
-
-    private static final ExecutorService SERVICE = Executors.newSingleThreadExecutor();
 
     private DatagramSocket socket;
     private InetAddress hostAddress;
@@ -50,44 +47,43 @@ public class PacketHandler {
         }
     }
 
+    @WorkerThread
     public void sendPacketToHost(Packet packet) {
         byte[] data = packet.getData();
 
-        SERVICE.submit(() -> {
-            DatagramPacket udpPacket =
-                    new DatagramPacket(data, data.length, hostAddress, HOST_PORT);
-            try {
-                socket.send(udpPacket);
-                packet.getResponseHandler().onCompleted(Packet.Response.SUCCESS);
-            } catch (IOException e) {
-                Log.e(TAG, "Failed to send packet to host!", e);
-                packet.getResponseHandler().onCompleted(Packet.Response.IO_ERROR);
-            }
-        });
+        DatagramPacket udpPacket =
+                new DatagramPacket(data, data.length, hostAddress, HOST_PORT);
+        try {
+            socket.send(udpPacket);
+            packet.getResponseHandler().onCompleted(Packet.Response.SUCCESS);
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to send packet to host!", e);
+            packet.getResponseHandler().onCompleted(Packet.Response.IO_ERROR);
+        }
     }
 
+    @WorkerThread
     public void receiveHostPacketResponse(Packet packet, boolean validate) {
         byte[] expectedData = packet.getData();
         byte[] buffer = new byte[expectedData.length];
         DatagramPacket udpPacket = new DatagramPacket(buffer, buffer.length);
 
-        SERVICE.submit(() -> {
-            try {
-                socket.receive(udpPacket);
+        try {
+            socket.receive(udpPacket);
+            Log.i(TAG, new String(udpPacket.getData()));
+            if (!Arrays.equals(expectedData, udpPacket.getData()) && validate) {
+                packet.getResponseHandler().onCompleted(Packet.Response.CORRUPTED_DATA);
+            } else {
+                packet.setData(udpPacket.getData());
 
-                if (!Arrays.equals(expectedData, udpPacket.getData()) && validate) {
-                    packet.getResponseHandler().onCompleted(Packet.Response.CORRUPTED_DATA);
-                } else {
-                    packet.setData(udpPacket.getData());
-                    packet.getResponseHandler().onCompleted(Packet.Response.SUCCESS);
-                }
-            } catch (SocketTimeoutException e) {
-                Log.e(TAG, "Failed to receive packet - Socket Timeout", e);
-                packet.getResponseHandler().onCompleted(Packet.Response.TIMEOUT);
-            } catch (IOException e) {
-                Log.e(TAG, "Failed to receive packet from client!", e);
-                packet.getResponseHandler().onCompleted(Packet.Response.IO_ERROR);
+                packet.getResponseHandler().onCompleted(Packet.Response.SUCCESS);
             }
-        });
+        } catch (SocketTimeoutException e) {
+            Log.e(TAG, "Failed to receive packet - Socket Timeout", e);
+            packet.getResponseHandler().onCompleted(Packet.Response.TIMEOUT);
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to receive packet from client!", e);
+            packet.getResponseHandler().onCompleted(Packet.Response.IO_ERROR);
+        }
     }
 }

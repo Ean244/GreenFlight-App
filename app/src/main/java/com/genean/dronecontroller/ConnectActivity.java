@@ -10,9 +10,14 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.Spinner;
 import android.widget.Toast;
 
+import com.genean.dronecontroller.input.DeviceType;
+import com.genean.dronecontroller.input.InputDevice;
 import com.genean.dronecontroller.packet.Packet;
 import com.genean.dronecontroller.packet.PacketHandler;
 
@@ -27,15 +32,7 @@ public class ConnectActivity extends AppCompatActivity {
     private static final String PSK = String.format("\"%s\"", "loremipsum");
     private final ExecutorService connectExecutor = Executors.newSingleThreadExecutor();
     private Future<?> connectTask = CompletableFuture.completedFuture(null);
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_connect);
-
-        final Button connect = findViewById(R.id.connectButton);
-        connect.setOnClickListener(this::onClickConnect);
-    }
+    private DeviceType selectedInput = DeviceType.SOFTWARE_JOYSTICK;
 
     @Override
     protected void onPause() {
@@ -44,8 +41,33 @@ public class ConnectActivity extends AppCompatActivity {
         connectTask.cancel(true);
     }
 
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_connect);
+
+        final Button connect = findViewById(R.id.connectButton);
+        connect.setOnClickListener(this::onClickConnect);
+
+        final Spinner spinner = findViewById(R.id.spinner);
+        ArrayAdapter<DeviceType> adapter = new ArrayAdapter<>(this, R.layout.spinner_input_devices, DeviceType.values());
+        spinner.setAdapter(adapter);
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                selectedInput = (DeviceType) parent.getItemAtPosition(position);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                toast(R.string.error_nothing_selected);
+            }
+        });
+        spinner.setSelection(0);
+    }
+
     private void onClickConnect(View view) {
-        if(!connectTask.isDone())
+        if (!connectTask.isDone())
             return;
 
         if (!checkPermissions())
@@ -109,7 +131,7 @@ public class ConnectActivity extends AppCompatActivity {
     private void startConnection() {
         Packet packet = new Packet(FlightCommand.CLIENT_CONNECT_QUERY);
         packet.setOnCompleted(response -> {
-            if(response == Packet.Response.SUCCESS) {
+            if (response == Packet.Response.SUCCESS) {
                 waitForConnectResponse();
             } else {
                 toast(R.string.packet_send_fail);
@@ -123,10 +145,11 @@ public class ConnectActivity extends AppCompatActivity {
         Packet packet = new Packet(FlightCommand.HOST_CONNECT_RESPONSE);
 
         packet.setOnCompleted(response -> {
-            if(response == Packet.Response.SUCCESS) {
+            if (response == Packet.Response.SUCCESS) {
                 toast(R.string.connect_success);
 
                 Intent intent = new Intent(this, ControllerActivity.class);
+                intent.putExtra(InputDevice.BUNDLE_KEY, selectedInput);
                 this.startActivity(intent);
             } else if (response == Packet.Response.TIMEOUT) {
                 toast(R.string.packet_response_timeout);
